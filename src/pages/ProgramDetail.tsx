@@ -12,6 +12,7 @@ export default function ProgramDetail() {
   const [years, setYears] = useState<ProgramYear[]>([]);
   const [tracks, setTracks] = useState<ProgramTrack[]>([]);
   const [hakutapa, setHakutapa] = useState("Yhteishaku");
+  const [basis, setBasis] = useState<"all" | "first">("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,13 +106,22 @@ export default function ProgramDetail() {
         </div>
       )}
 
+      <div className="toggle" style={{ margin: "12px 0" }}>
+        <button className={basis === "all" ? "active" : ""} onClick={() => setBasis("all")}>
+          Kaikki hakijat
+        </button>
+        <button className={basis === "first" ? "active" : ""} onClick={() => setBasis("first")}>
+          Ensisijaiset hakijat
+        </button>
+      </div>
+
       {latest ? (
         <>
           <h2>Tilastot {latest.year}</h2>
-          <StatCards py={latest} />
+          <StatCards py={latest} basis={basis} />
 
           <h2>Kehitys vuosittain</h2>
-          <TrendCharts years={yearsForTapa} />
+          <TrendCharts years={yearsForTapa} basis={basis} />
 
           <h2>Valintatavat {latest.year}</h2>
           <TrackTable tracks={latestTracks} />

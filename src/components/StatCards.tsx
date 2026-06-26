@@ -9,23 +9,37 @@ function ratio(num: number, den: number): string {
   return `${(num / den).toFixed(1)}×`;
 }
 
-export default function StatCards({ py }: { py: ProgramYear }) {
+export default function StatCards({
+  py,
+  basis,
+}: {
+  py: ProgramYear;
+  basis: "all" | "first";
+}) {
+  // Which applicant figure drives the derived ratios.
+  const applicants = basis === "first" ? py.first_pref : py.applicants;
+  const applicantsLabel = basis === "first" ? "Ensisijaiset hakijat" : "Hakijat";
+  const applicantsSub =
+    basis === "first"
+      ? `${py.applicants.toLocaleString("fi-FI")} kaikkiaan`
+      : `${py.first_pref.toLocaleString("fi-FI")} ensisijaista`;
+
   return (
     <div className="cards">
       <Card label="Aloituspaikat" value={py.places} />
-      <Card label="Hakijat" value={py.applicants} sub={`${py.first_pref} ensisijaista`} />
+      <Card label={applicantsLabel} value={applicants} sub={applicantsSub} />
       <Card label="Valitut" value={py.selected} />
       <Card label="Paikan vastaanottaneet" value={py.accepted} />
       <Card label="Aloittaneet" value={py.started} />
       <Card
         label="Hyväksymisprosentti"
-        rawValue={pct(py.selected, py.applicants)}
-        sub="valitut / hakijat"
+        rawValue={pct(py.selected, applicants)}
+        sub={basis === "first" ? "valitut / ensisijaiset" : "valitut / hakijat"}
       />
       <Card
         label="Hakupaine"
-        rawValue={ratio(py.applicants, py.places)}
-        sub="hakijat / paikka"
+        rawValue={ratio(applicants, py.places)}
+        sub={basis === "first" ? "ensisijaiset / paikka" : "hakijat / paikka"}
       />
     </div>
   );
