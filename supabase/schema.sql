@@ -21,7 +21,8 @@ create table program (
   first_year  int,
   last_year   int,
   active      boolean default false,            -- had applicants/places in 2025+ (current round)
-  opintopolku_oid text,                         -- latest hakukohde OID → opintopolku.fi link
+  opintopolku_oid text,                         -- latest hakukohde OID
+  opintopolku_koulutus_oid text,                -- resolved koulutus OID → /konfo/fi/koulutus/<oid>
   koulutusala text,                             -- koulutusalaTaso1
   ohjauksen_ala text,                           -- okmOhjauksenAla
   maakunta    text,

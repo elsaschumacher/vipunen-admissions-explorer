@@ -61,7 +61,8 @@ export interface ProgramRow {
   first_year: number | null;
   last_year: number | null;
   active: boolean; // had applicants/places in ACTIVE_FROM or later (current Opintopolku round)
-  opintopolku_oid: string | null; // latest hakukohde OID, links to opintopolku.fi
+  opintopolku_oid: string | null; // latest hakukohde OID
+  opintopolku_koulutus_oid: string | null; // resolved koulutus OID → /konfo/fi/koulutus/<oid>
   koulutusala: string | null;
   ohjauksen_ala: string | null;
   maakunta: string | null;
@@ -246,6 +247,7 @@ export function aggregate(rows: VipunenRow[]): Aggregated {
         last_year: null,
         active: false,
         opintopolku_oid: null,
+        opintopolku_koulutus_oid: null,
         koulutusala: r.koulutusalaTaso1,
         ohjauksen_ala: r.okmOhjauksenAla,
         maakunta: r.maakuntaHakukohde,

@@ -102,16 +102,27 @@ export default function ProgramDetail() {
             Lakkautettu / nimi muuttunut (viimeksi {program.last_year})
           </span>
         )}
-        <a
-          className="op-link"
-          href={`https://opintopolku.fi/konfo/fi/haku/${encodeURIComponent(
-            `${program.program} ${program.korkeakoulu}`,
-          )}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Hae Opintopolusta ↗
-        </a>
+        {program.opintopolku_koulutus_oid ? (
+          <a
+            className="op-link"
+            href={`https://opintopolku.fi/konfo/fi/koulutus/${program.opintopolku_koulutus_oid}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Avaa Opintopolussa ↗
+          </a>
+        ) : (
+          <a
+            className="op-link"
+            href={`https://opintopolku.fi/konfo/fi/haku/${encodeURIComponent(
+              `${program.program} ${program.korkeakoulu}`,
+            )}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Hae Opintopolusta ↗
+          </a>
+        )}
       </p>
 
       {hakutavat.length > 1 && (

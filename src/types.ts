@@ -12,6 +12,7 @@ export interface Program {
   last_year: number | null;
   active: boolean;
   opintopolku_oid: string | null;
+  opintopolku_koulutus_oid: string | null;
   koulutusala: string | null;
   ohjauksen_ala: string | null;
   maakunta: string | null;

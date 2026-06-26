@@ -15,6 +15,8 @@ const DATASET = "korkeakoulutus_hakeneet_ja_paikan_vastaanottaneet";
 const API = `https://api.vipunen.fi/api/resources/${DATASET}`;
 const PAGE = 100_000;
 const CACHE = ".vipunen-cache.json"; // local raw-data cache to avoid re-downloading
+const OP_CACHE = ".opintopolku-cache.json"; // hakukohde OID -> koulutus OID (resolved)
+const KONFO = "https://opintopolku.fi/konfo-backend/external";
 
 async function fetchAll(): Promise<VipunenRow[]> {
   if (existsSync(CACHE)) {
@@ -71,6 +73,51 @@ function rawRowFor(r: VipunenRow) {
   };
 }
 
+async function konfoJson(path: string): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(`${KONFO}${path}`, { headers: { "User-Agent": "vipunen-explorer" } });
+    if (!res.ok) return null;
+    return (await res.json()) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/** Resolve a hakukohde OID to its koulutus OID (hakukohde → toteutus → koulutus). */
+async function resolveKoulutusOid(hakukohdeOid: string): Promise<string | null> {
+  const hk = await konfoJson(`/hakukohde/${hakukohdeOid}`);
+  const toteutusOid = hk?.toteutusOid as string | undefined;
+  if (!toteutusOid) return (hk?.koulutusOid as string) ?? null;
+  const tot = await konfoJson(`/toteutus/${toteutusOid}`);
+  return (tot?.koulutusOid as string) ?? null;
+}
+
+/** Fill opintopolku_koulutus_oid for active programs, using a local cache. */
+async function enrichKoulutusOids(programs: Awaited<ReturnType<typeof aggregate>>["programs"]) {
+  const cache: Record<string, string | null> = existsSync(OP_CACHE)
+    ? JSON.parse(readFileSync(OP_CACHE, "utf8"))
+    : {};
+  const todo = programs.filter(
+    (p) => p.active && p.opintopolku_oid && !(p.opintopolku_oid in cache),
+  );
+  console.log(`Resolving koulutus OIDs for ${todo.length} active programs (cached: ${Object.keys(cache).length})…`);
+  const CONCURRENCY = 8;
+  for (let i = 0; i < todo.length; i += CONCURRENCY) {
+    const batch = todo.slice(i, i + CONCURRENCY);
+    await Promise.all(
+      batch.map(async (p) => {
+        cache[p.opintopolku_oid!] = await resolveKoulutusOid(p.opintopolku_oid!);
+      }),
+    );
+    process.stdout.write(`\r  resolved ${Math.min(i + CONCURRENCY, todo.length)}/${todo.length}`);
+    writeFileSync(OP_CACHE, JSON.stringify(cache));
+  }
+  if (todo.length) console.log("");
+  for (const p of programs) {
+    if (p.opintopolku_oid) p.opintopolku_koulutus_oid = cache[p.opintopolku_oid] ?? null;
+  }
+}
+
 async function insertInBatches<T extends object>(
   db: SupabaseClient,
   table: string,
@@ -102,6 +149,8 @@ async function main() {
   console.log(
     `Programs: ${programs.length}, program-years: ${programYears.length}, tracks: ${programTracks.length}`,
   );
+
+  await enrichKoulutusOids(programs);
 
   console.log("Clearing existing data…");
   // raw_rows/program_year/program_track cascade from program; clear children first
