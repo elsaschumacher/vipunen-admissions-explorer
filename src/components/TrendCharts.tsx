@@ -12,8 +12,8 @@ import {
 } from "recharts";
 import type { ProgramYear } from "../types.ts";
 
-const axis = { stroke: "#9aa7b5", fontSize: 12 };
-const grid = "#2d3744";
+const axis = { stroke: "#5c6b7a", fontSize: 12 };
+const grid = "#e2e8f0";
 
 export default function TrendCharts({
   years,
@@ -46,9 +46,9 @@ export default function TrendCharts({
             <CartesianGrid stroke={grid} strokeDasharray="3 3" />
             <XAxis dataKey="year" {...axis} />
             <YAxis {...axis} />
-            <Tooltip contentStyle={{ background: "#1a212b", border: "1px solid #2d3744" }} />
+            <Tooltip contentStyle={{ background: "#ffffff", border: "1px solid #dde3ec", borderRadius: 8 }} />
             <Legend />
-            <Bar dataKey={applicantsLabel} fill="#4f9cf9" />
+            <Bar dataKey={applicantsLabel} fill="#2563eb" />
             <Bar dataKey="Aloituspaikat" fill="#f9a84f" />
           </BarChart>
         </ResponsiveContainer>
@@ -61,7 +61,7 @@ export default function TrendCharts({
             <CartesianGrid stroke={grid} strokeDasharray="3 3" />
             <XAxis dataKey="year" {...axis} />
             <YAxis {...axis} />
-            <Tooltip contentStyle={{ background: "#1a212b", border: "1px solid #2d3744" }} />
+            <Tooltip contentStyle={{ background: "#ffffff", border: "1px solid #dde3ec", borderRadius: 8 }} />
             <Line type="monotone" dataKey="Hyväksymis_pct" name="Hyväksymis-%" stroke="#5ad19a" dot />
           </LineChart>
         </ResponsiveContainer>
@@ -74,9 +74,9 @@ export default function TrendCharts({
             <CartesianGrid stroke={grid} strokeDasharray="3 3" />
             <XAxis dataKey="year" {...axis} />
             <YAxis {...axis} />
-            <Tooltip contentStyle={{ background: "#1a212b", border: "1px solid #2d3744" }} />
+            <Tooltip contentStyle={{ background: "#ffffff", border: "1px solid #dde3ec", borderRadius: 8 }} />
             <Legend />
-            <Line type="monotone" dataKey="Valitut" stroke="#4f9cf9" dot />
+            <Line type="monotone" dataKey="Valitut" stroke="#2563eb" dot />
             <Line type="monotone" dataKey="Aloittaneet" stroke="#c98bff" dot />
           </LineChart>
         </ResponsiveContainer>
