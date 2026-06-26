@@ -9,13 +9,16 @@ drop table if exists program cascade;
 
 -- ── Dimension: one row per degree program (korkeakoulu + main degree) ──────────
 create table program (
-  program_id  text primary key,                 -- slug of korkeakoulu + paaasiallinenTutkintoHakukohde
+  program_id  text primary key,                 -- slug of korkeakoulu + entry cycle + field
   korkeakoulu text not null,
   sektori     text,                             -- Yliopistokoulutus / Ammattikorkeakoulukoulutus
-  program     text not null,                    -- paaasiallinenTutkintoHakukohde (display name)
+  program     text not null,                    -- display name (title-cased field)
+  field       text,                             -- normalized field (lowercase)
+  entry_cycle text,                             -- "Suora haku (kandi/perustutkinto)" / "Maisterihaku" / …
+  cycle_code  text,                             -- i | ii | iii | x  (Bologna cycle)
+  degrees     text,                             -- distinct main-degree labels seen (info)
   koulutusala text,                             -- koulutusalaTaso1
   ohjauksen_ala text,                           -- okmOhjauksenAla
-  degree_level text,                            -- koulutusasteTaso2
   maakunta    text,
   kunta       text,
   -- precomputed lowercase haystack for the search box
@@ -59,6 +62,7 @@ create table raw_rows (
   hakutapa    text,
   hakutyyppi  text,
   track       text,                             -- valintatapajononTyyppi
+  aloitussykli text,                            -- tutkinnonAloitussykli
   korkeakoulu text,
   toimipiste  text,
   sektori     text,

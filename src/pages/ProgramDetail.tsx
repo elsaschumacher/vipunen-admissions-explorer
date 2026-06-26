@@ -78,13 +78,18 @@ export default function ProgramDetail() {
   return (
     <div className="container">
       <p><Link to="/">← Haku</Link></p>
-      <h1>{program.program}</h1>
+      <h1>
+        {program.program}
+        {program.entry_cycle && <span className="badge">{program.entry_cycle}</span>}
+      </h1>
       <p className="muted">
         {program.korkeakoulu}
         {program.koulutusala ? ` · ${program.koulutusala}` : ""}
-        {program.degree_level ? ` · ${program.degree_level}` : ""}
         {program.kunta ? ` · ${program.kunta}` : ""}
       </p>
+      {program.degrees && (
+        <p className="muted small">Tutkinnot: {program.degrees}</p>
+      )}
 
       {hakutavat.length > 1 && (
         <div className="toggle" style={{ margin: "12px 0" }}>

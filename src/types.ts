@@ -3,9 +3,12 @@ export interface Program {
   korkeakoulu: string;
   sektori: string | null;
   program: string;
+  field: string | null;
+  entry_cycle: string | null;
+  cycle_code: string | null;
+  degrees: string | null;
   koulutusala: string | null;
   ohjauksen_ala: string | null;
-  degree_level: string | null;
   maakunta: string | null;
   kunta: string | null;
 }

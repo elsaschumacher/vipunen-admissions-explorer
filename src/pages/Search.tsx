@@ -6,6 +6,7 @@ import type { Program } from "../types.ts";
 export default function Search() {
   const [query, setQuery] = useState("");
   const [sektori, setSektori] = useState("");
+  const [cycle, setCycle] = useState("");
   const [results, setResults] = useState<Program[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,11 +25,12 @@ export default function Search() {
       setError(null);
       let q = supabase
         .from("program")
-        .select("program_id,korkeakoulu,sektori,program,koulutusala,degree_level")
+        .select("program_id,korkeakoulu,sektori,program,koulutusala,entry_cycle,cycle_code,degrees")
         .order("korkeakoulu")
         .limit(100);
       if (debounced) q = q.ilike("search_text", `%${debounced.toLowerCase()}%`);
       if (sektori) q = q.eq("sektori", sektori);
+      if (cycle) q = q.eq("cycle_code", cycle);
       const { data, error } = await q;
       if (cancelled) return;
       if (error) setError(error.message);
@@ -39,11 +41,14 @@ export default function Search() {
     return () => {
       cancelled = true;
     };
-  }, [debounced, sektori]);
+  }, [debounced, sektori, cycle]);
 
   const hint = useMemo(
-    () => (!debounced && !sektori ? "Showing first 100 programs. Start typing to search." : null),
-    [debounced, sektori],
+    () =>
+      !debounced && !sektori && !cycle
+        ? "Näytetään 100 ensimmäistä koulutusta. Aloita kirjoittaminen hakeaksesi."
+        : null,
+    [debounced, sektori, cycle],
   );
 
   return (
@@ -67,6 +72,12 @@ export default function Search() {
           <option value="Yliopistokoulutus">Yliopisto</option>
           <option value="Ammattikorkeakoulukoulutus">Ammattikorkeakoulu</option>
         </select>
+        <select value={cycle} onChange={(e) => setCycle(e.target.value)}>
+          <option value="">Kaikki hakutyypit</option>
+          <option value="i">Suora haku (kandi/perustutkinto)</option>
+          <option value="ii">Maisterihaku</option>
+          <option value="iii">Tohtorikoulutus</option>
+        </select>
       </div>
 
       {error && <p style={{ color: "salmon" }}>Virhe: {error}</p>}
@@ -76,7 +87,10 @@ export default function Search() {
       {!loading &&
         results.map((p) => (
           <Link className="result" key={p.program_id} to={`/program/${p.program_id}`}>
-            <div>{p.program}</div>
+            <div>
+              {p.program}
+              {p.entry_cycle && <span className="badge">{p.entry_cycle}</span>}
+            </div>
             <div className="inst">
               {p.korkeakoulu}
               {p.koulutusala ? ` · ${p.koulutusala}` : ""}

@@ -58,6 +58,20 @@ h2 { font-size: 1.1rem; margin: 28px 0 12px; color: var(--muted); font-weight: 6
 .result:hover { background: var(--panel-2); text-decoration: none; }
 .result .inst { color: var(--muted); font-size: 0.85rem; }
 
+.badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  vertical-align: middle;
+  color: var(--accent);
+  background: rgba(79, 156, 249, 0.12);
+  border: 1px solid rgba(79, 156, 249, 0.35);
+  border-radius: 999px;
+}
+h1 .badge { font-size: 0.8rem; }
+
 /* stat cards */
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .card {

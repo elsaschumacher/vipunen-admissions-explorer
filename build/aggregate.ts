@@ -1,13 +1,22 @@
 // Aggregation rules for the Vipunen admissions dataset.
 //
-// Each application target (hakukohde) in a year is split into several source rows
-// by valintatapajononTyyppi (selection track), and metrics live on DIFFERENT rows:
+// GROUPING — a "program" is identified by institution + entry cycle + field:
+//   - entry cycle = tutkinnonAloitussykli (Bologna cycle): "I sykli" = first-cycle
+//     entry (high-schoolers apply directly to a bachelor / combined bachelor+master),
+//     "II sykli" = master's entry (you already hold a bachelor), "III sykli" = doctoral.
+//   - field = paaasiallinenTutkintoHakukohde with its degree-type prefix removed
+//     ("Tekn. kand., tuotantotalous" and "Dipl.ins., tuotantotalous" both → "tuotantotalous").
+// This keeps a combined bachelor+master program continuous across years even when
+// Vipunen flip-flops whether it labels the main degree as the bachelor or the master,
+// while keeping a separate master's-only (II sykli) entry distinct.
+//
+// METRICS — each application target (hakukohde) in a year is split into several source
+// rows by valintatapajononTyyppi (selection track); metrics live on DIFFERENT rows:
 //   - track = null            → carries aloituspaikatLkm (places)
 //   - track = "Ei valittu"    → carries kaikkiHakijatLkm / ensisijaisetHakijatLkm
 //   - named tracks (Todistusvalinta, Koepisteet, …) → valitut / vastaanottaneet / scores
 // So per (program, year, hakutapa) we SUM each metric across all rows (null → 0).
-// Scores are per-track and on different point scales, so they are kept per-track,
-// never summed.
+// Scores are per-track and on different point scales, so they are kept per-track.
 
 /** A raw row as returned by the Vipunen API (only the fields we use). */
 export interface VipunenRow {
@@ -17,6 +26,7 @@ export interface VipunenRow {
   hakutapa: string | null;
   hakutyyppi: string | null;
   valintatapajononTyyppi: string | null;
+  tutkinnonAloitussykli: string | null;
   koulutusasteTaso2: string | null;
   koulutusalaTaso1: string | null;
   okmOhjauksenAla: string | null;
@@ -41,10 +51,13 @@ export interface ProgramRow {
   program_id: string;
   korkeakoulu: string;
   sektori: string | null;
-  program: string;
+  program: string; // display name = title-cased field
+  field: string; // normalized field (lowercase)
+  entry_cycle: string; // friendly label: "Suora haku (kandi+maisteri)" / "Maisterihaku" / …
+  cycle_code: string; // i | ii | iii | x
+  degrees: string | null; // distinct main-degree labels seen, for info
   koulutusala: string | null;
   ohjauksen_ala: string | null;
-  degree_level: string | null;
   maakunta: string | null;
   kunta: string | null;
 }
@@ -80,14 +93,62 @@ export interface Aggregated {
 
 const n = (v: number | null | undefined): number => (typeof v === "number" ? v : 0);
 
-/** Stable slug for a degree program = institution + main degree. */
-export function programId(korkeakoulu: string, program: string): string {
-  return (korkeakoulu + "__" + program)
+function slug(s: string): string {
+  return s
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+/** Field name = paaasiallinenTutkintoHakukohde with the leading "<degree>," prefix removed. */
+export function fieldOf(label: string): string {
+  const parts = label.split(", ");
+  return (parts.length > 1 ? parts.slice(1).join(", ") : label).trim().toLowerCase();
+}
+
+/** The degree-type prefix, e.g. "Dipl.ins." from "Dipl.ins., tuotantotalous". */
+export function degreeOf(label: string): string {
+  const parts = label.split(", ");
+  return parts.length > 1 ? parts[0].trim() : "";
+}
+
+/** Bologna cycle → short code used in the program id. */
+export function cycleCode(sykli: string | null): string {
+  switch (sykli) {
+    case "I sykli":
+      return "i";
+    case "II sykli":
+      return "ii";
+    case "III sykli":
+      return "iii";
+    default:
+      return "x";
+  }
+}
+
+/** Bologna cycle → user-facing label describing who applies. */
+export function cycleLabel(sykli: string | null): string {
+  switch (sykli) {
+    case "I sykli":
+      return "Suora haku (kandi/perustutkinto)";
+    case "II sykli":
+      return "Maisterihaku";
+    case "III sykli":
+      return "Tohtorikoulutus";
+    default:
+      return "Muu / ei tietoa";
+  }
+}
+
+/** Stable program id = institution + entry cycle + field. */
+export function programId(korkeakoulu: string, sykli: string | null, field: string): string {
+  return `${slug(korkeakoulu)}__${cycleCode(sykli)}__${slug(field)}`;
+}
+
+function titleCase(field: string): string {
+  return field.charAt(0).toUpperCase() + field.slice(1);
 }
 
 /** A program row must identify both an institution and a main degree. */
@@ -109,32 +170,39 @@ function maxOf(a: number | null, b: number | null): number | null {
 /** Aggregate raw Vipunen rows into the three target tables. */
 export function aggregate(rows: VipunenRow[]): Aggregated {
   const programs = new Map<string, ProgramRow>();
+  const degreeSets = new Map<string, Set<string>>();
   const years = new Map<string, ProgramYearRow>();
   const tracks = new Map<string, ProgramTrackRow>();
 
   for (const r of rows) {
     if (!isUsableProgram(r)) continue;
     const korkeakoulu = r.korkeakoulu as string;
-    const program = r.paaasiallinenTutkintoHakukohde as string;
-    const pid = programId(korkeakoulu, program);
+    const label = r.paaasiallinenTutkintoHakukohde as string;
+    const field = fieldOf(label);
+    const pid = programId(korkeakoulu, r.tutkinnonAloitussykli, field);
     const hakutapa = r.hakutapa || "Tuntematon";
     const year = r.koulutuksenAlkamisvuosi;
 
-    // program dimension — keep the most recent metadata seen
-    const existing = programs.get(pid);
-    if (!existing) {
+    // program dimension — keep the most recent metadata seen, collect degree labels
+    if (!programs.has(pid)) {
       programs.set(pid, {
         program_id: pid,
         korkeakoulu,
         sektori: r.sektori,
-        program,
+        program: titleCase(field),
+        field,
+        entry_cycle: cycleLabel(r.tutkinnonAloitussykli),
+        cycle_code: cycleCode(r.tutkinnonAloitussykli),
+        degrees: null,
         koulutusala: r.koulutusalaTaso1,
         ohjauksen_ala: r.okmOhjauksenAla,
-        degree_level: r.koulutusasteTaso2,
         maakunta: r.maakuntaHakukohde,
         kunta: r.kuntaHakukohde,
       });
+      degreeSets.set(pid, new Set());
     }
+    const deg = degreeOf(label);
+    if (deg) degreeSets.get(pid)!.add(deg);
 
     // program_year facts — SUM across all track rows
     const yk = `${pid}|${year}|${hakutapa}`;
@@ -181,6 +249,11 @@ export function aggregate(rows: VipunenRow[]): Aggregated {
       pt.max_score = maxOf(pt.max_score, r.ylinHyvaksyttyPistemaara);
       tracks.set(tk, pt);
     }
+  }
+
+  // fold collected degree labels into each program
+  for (const [pid, set] of degreeSets) {
+    programs.get(pid)!.degrees = [...set].sort().join(", ") || null;
   }
 
   return {
