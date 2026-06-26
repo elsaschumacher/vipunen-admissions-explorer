@@ -5,6 +5,7 @@
 // RLS so it can write). Never expose the service key to the browser.
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import pg from "pg";
 import { config } from "dotenv";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { aggregate, programId, majorName, isUsableProgram, type VipunenRow } from "./aggregate.ts";
@@ -77,6 +78,29 @@ type KonfoResult =
   | { status: "ok"; data: Record<string, unknown> }
   | { status: "notfound" } // genuine 404 — safe to cache as "no koulutus"
   | { status: "error" }; // transient (429/5xx/network) — do NOT cache, retry next run
+
+/**
+ * Apply supabase/schema.sql via a direct Postgres connection, so the schema is
+ * created/updated automatically (DDL can't go through the REST API). Requires
+ * SUPABASE_DB_URL in .env; if absent, we skip and the user runs schema.sql manually.
+ */
+async function applySchema() {
+  const connectionString = process.env.SUPABASE_DB_URL;
+  if (!connectionString) {
+    console.log("SUPABASE_DB_URL not set — skipping auto-schema (run supabase/schema.sql manually).");
+    return;
+  }
+  const sql = readFileSync(new URL("../supabase/schema.sql", import.meta.url), "utf8");
+  const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } });
+  await client.connect();
+  try {
+    console.log("Applying schema (supabase/schema.sql)…");
+    await client.query(sql);
+    console.log("Schema applied.");
+  } finally {
+    await client.end();
+  }
+}
 
 async function konfoJson(path: string): Promise<KonfoResult> {
   try {
@@ -157,6 +181,8 @@ async function main() {
     throw new Error("Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env");
   }
   const db = createClient(url, key, { auth: { persistSession: false } });
+
+  await applySchema();
 
   const rows = await fetchAll();
   console.log(`Fetched ${rows.length} raw rows. Aggregating…`);
