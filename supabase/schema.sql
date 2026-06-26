@@ -9,11 +9,12 @@ drop table if exists program cascade;
 
 -- ── Dimension: one row per degree program (korkeakoulu + main degree) ──────────
 create table program (
-  program_id  text primary key,                 -- slug of korkeakoulu + entry cycle + field
+  program_id  text primary key,                 -- slug of korkeakoulu + entry cycle + major
   korkeakoulu text not null,
   sektori     text,                             -- Yliopistokoulutus / Ammattikorkeakoulukoulutus
-  program     text not null,                    -- display name (title-cased field)
-  field       text,                             -- normalized field (lowercase)
+  program     text not null,                    -- display name = major / study option
+  field       text,                             -- normalized major name (lowercase)
+  degree_group text,                            -- broader degree this major belongs to (e.g. Tietotekniikka)
   entry_cycle text,                             -- "Suora haku (kandi/perustutkinto)" / "Maisterihaku" / …
   cycle_code  text,                             -- i | ii | iii | x  (Bologna cycle)
   degrees     text,                             -- distinct main-degree labels seen (info)

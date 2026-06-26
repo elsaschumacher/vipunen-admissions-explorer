@@ -88,9 +88,12 @@ export default function ProgramDetail() {
         {program.koulutusala ? ` · ${program.koulutusala}` : ""}
         {program.kunta ? ` · ${program.kunta}` : ""}
       </p>
-      {program.degrees && (
-        <p className="muted small">Tutkinnot: {program.degrees}</p>
-      )}
+      <p className="muted small">
+        {program.degree_group && program.degree_group.toLowerCase() !== program.program.toLowerCase()
+          ? `Tutkinto-ohjelma: ${program.degree_group}. `
+          : ""}
+        {program.degrees ? `Tutkinnot: ${program.degrees}` : ""}
+      </p>
 
       {hakutavat.length > 1 && (
         <div className="toggle" style={{ margin: "12px 0" }}>

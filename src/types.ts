@@ -4,6 +4,7 @@ export interface Program {
   sektori: string | null;
   program: string;
   field: string | null;
+  degree_group: string | null;
   entry_cycle: string | null;
   cycle_code: string | null;
   degrees: string | null;

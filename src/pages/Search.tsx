@@ -25,7 +25,7 @@ export default function Search() {
       setError(null);
       let q = supabase
         .from("program")
-        .select("program_id,korkeakoulu,sektori,program,koulutusala,entry_cycle,cycle_code,degrees")
+        .select("program_id,korkeakoulu,sektori,program,koulutusala,degree_group,entry_cycle,cycle_code,degrees")
         .order("korkeakoulu")
         .limit(100);
       if (debounced) q = q.ilike("search_text", `%${debounced.toLowerCase()}%`);
@@ -93,7 +93,9 @@ export default function Search() {
             </div>
             <div className="inst">
               {p.korkeakoulu}
-              {p.koulutusala ? ` · ${p.koulutusala}` : ""}
+              {p.degree_group && p.degree_group.toLowerCase() !== p.program.toLowerCase()
+                ? ` · ${p.degree_group}`
+                : ""}
             </div>
           </Link>
         ))}

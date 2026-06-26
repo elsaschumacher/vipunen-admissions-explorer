@@ -51,9 +51,10 @@ export interface ProgramRow {
   program_id: string;
   korkeakoulu: string;
   sektori: string | null;
-  program: string; // display name = title-cased field
-  field: string; // normalized field (lowercase)
-  entry_cycle: string; // friendly label: "Suora haku (kandi+maisteri)" / "Maisterihaku" / …
+  program: string; // display name = major / study option
+  field: string; // normalized major name (lowercase)
+  degree_group: string | null; // the broader degree this major belongs to, e.g. "Tietotekniikka"
+  entry_cycle: string; // friendly label: "Suora haku (kandi/perustutkinto)" / "Maisterihaku" / …
   cycle_code: string; // i | ii | iii | x
   degrees: string | null; // distinct main-degree labels seen, for info
   koulutusala: string | null;
@@ -108,6 +109,27 @@ export function fieldOf(label: string): string {
   return (parts.length > 1 ? parts.slice(1).join(", ") : label).trim().toLowerCase();
 }
 
+// Admission side-channels that prefix a hakukohde (e.g. "Haku avoimen yliopiston
+// väylän kautta, Tietotekniikka, …"); we drop the prefix so the major is recovered.
+const CHANNEL_PREFIXES = ["haku ", "double degree", "siirtohaku", "avoimen väylä", "avoin väylä"];
+
+/**
+ * Major / study option recovered from the hakukohde (application target), e.g.
+ * "Tietotekniikka, tekniikan kandidaatti ja diplomi-insinööri (3 v + 2 v)" → "Tietotekniikka".
+ * This is finer than the degree label and matches how institutions list their majors.
+ */
+export function majorName(hakukohde: string | null, fallbackLabel: string): string {
+  if (!hakukohde) return fieldOf(fallbackLabel);
+  let s = hakukohde.replace(/\s*\([^)]*\)/g, ""); // drop parentheticals
+  const low = s.toLowerCase();
+  if (CHANNEL_PREFIXES.some((p) => low.startsWith(p)) && s.includes(",")) {
+    s = s.slice(s.indexOf(",") + 1); // drop leading admission-channel segment
+  }
+  if (s.includes(";")) s = s.slice(s.lastIndexOf(";") + 1); // umbrella name → last part
+  s = s.split(",")[0]; // drop the degree-type suffix
+  return s.trim() || fieldOf(fallbackLabel);
+}
+
 /** The degree-type prefix, e.g. "Dipl.ins." from "Dipl.ins., tuotantotalous". */
 export function degreeOf(label: string): string {
   const parts = label.split(", ");
@@ -142,9 +164,9 @@ export function cycleLabel(sykli: string | null): string {
   }
 }
 
-/** Stable program id = institution + entry cycle + field. */
-export function programId(korkeakoulu: string, sykli: string | null, field: string): string {
-  return `${slug(korkeakoulu)}__${cycleCode(sykli)}__${slug(field)}`;
+/** Stable program id = institution + entry cycle + major/study option. */
+export function programId(korkeakoulu: string, sykli: string | null, major: string): string {
+  return `${slug(korkeakoulu)}__${cycleCode(sykli)}__${slug(major)}`;
 }
 
 function titleCase(field: string): string {
@@ -178,8 +200,8 @@ export function aggregate(rows: VipunenRow[]): Aggregated {
     if (!isUsableProgram(r)) continue;
     const korkeakoulu = r.korkeakoulu as string;
     const label = r.paaasiallinenTutkintoHakukohde as string;
-    const field = fieldOf(label);
-    const pid = programId(korkeakoulu, r.tutkinnonAloitussykli, field);
+    const major = majorName(r.hakukohde, label);
+    const pid = programId(korkeakoulu, r.tutkinnonAloitussykli, major);
     const hakutapa = r.hakutapa || "Tuntematon";
     const year = r.koulutuksenAlkamisvuosi;
 
@@ -189,8 +211,9 @@ export function aggregate(rows: VipunenRow[]): Aggregated {
         program_id: pid,
         korkeakoulu,
         sektori: r.sektori,
-        program: titleCase(field),
-        field,
+        program: major,
+        field: major.toLowerCase(),
+        degree_group: titleCase(fieldOf(label)),
         entry_cycle: cycleLabel(r.tutkinnonAloitussykli),
         cycle_code: cycleCode(r.tutkinnonAloitussykli),
         degrees: null,
