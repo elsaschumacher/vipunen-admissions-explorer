@@ -94,6 +94,25 @@ export default function ProgramDetail() {
           : ""}
         {program.degrees ? `Tutkinnot: ${program.degrees}` : ""}
       </p>
+      <p className="small" style={{ margin: "8px 0" }}>
+        {program.active ? (
+          <span className="badge">Aktiivinen</span>
+        ) : (
+          <span className="badge badge-muted">
+            Lakkautettu / nimi muuttunut (viimeksi {program.last_year})
+          </span>
+        )}
+        {program.opintopolku_oid && (
+          <a
+            className="op-link"
+            href={`https://opintopolku.fi/konfo/fi/hakukohde/${program.opintopolku_oid}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Avaa Opintopolussa ↗
+          </a>
+        )}
+      </p>
 
       {hakutavat.length > 1 && (
         <div className="toggle" style={{ margin: "12px 0" }}>

@@ -18,6 +18,10 @@ create table program (
   entry_cycle text,                             -- "Suora haku (kandi/perustutkinto)" / "Maisterihaku" / …
   cycle_code  text,                             -- i | ii | iii | x  (Bologna cycle)
   degrees     text,                             -- distinct main-degree labels seen (info)
+  first_year  int,
+  last_year   int,
+  active      boolean default false,            -- had applicants/places in 2025+ (current round)
+  opintopolku_oid text,                         -- latest hakukohde OID → opintopolku.fi link
   koulutusala text,                             -- koulutusalaTaso1
   ohjauksen_ala text,                           -- okmOhjauksenAla
   maakunta    text,
@@ -87,6 +91,7 @@ create table raw_rows (
 create index program_year_pid_year on program_year (program_id, year);
 create index program_track_pid_year on program_track (program_id, year);
 create index program_korkeakoulu on program (korkeakoulu);
+create index program_active on program (active);
 create index program_search on program using gin (to_tsvector('simple', search_text));
 create index raw_rows_pid on raw_rows (program_id, year);
 

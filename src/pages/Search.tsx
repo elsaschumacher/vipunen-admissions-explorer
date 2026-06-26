@@ -7,6 +7,7 @@ export default function Search() {
   const [query, setQuery] = useState("");
   const [sektori, setSektori] = useState("");
   const [cycle, setCycle] = useState("");
+  const [showDiscontinued, setShowDiscontinued] = useState(false);
   const [results, setResults] = useState<Program[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,12 +26,13 @@ export default function Search() {
       setError(null);
       let q = supabase
         .from("program")
-        .select("program_id,korkeakoulu,sektori,program,koulutusala,degree_group,entry_cycle,cycle_code,degrees")
+        .select("program_id,korkeakoulu,sektori,program,koulutusala,degree_group,entry_cycle,cycle_code,degrees,active,last_year")
         .order("korkeakoulu")
         .limit(100);
       if (debounced) q = q.ilike("search_text", `%${debounced.toLowerCase()}%`);
       if (sektori) q = q.eq("sektori", sektori);
       if (cycle) q = q.eq("cycle_code", cycle);
+      if (!showDiscontinued) q = q.eq("active", true);
       const { data, error } = await q;
       if (cancelled) return;
       if (error) setError(error.message);
@@ -41,7 +43,7 @@ export default function Search() {
     return () => {
       cancelled = true;
     };
-  }, [debounced, sektori, cycle]);
+  }, [debounced, sektori, cycle, showDiscontinued]);
 
   const hint = useMemo(
     () =>
@@ -78,6 +80,14 @@ export default function Search() {
           <option value="ii">Maisterihaku</option>
           <option value="iii">Tohtorikoulutus</option>
         </select>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={showDiscontinued}
+            onChange={(e) => setShowDiscontinued(e.target.checked)}
+          />
+          Näytä myös lakkautetut
+        </label>
       </div>
 
       {error && <p style={{ color: "salmon" }}>Virhe: {error}</p>}
@@ -90,6 +100,9 @@ export default function Search() {
             <div>
               {p.program}
               {p.entry_cycle && <span className="badge">{p.entry_cycle}</span>}
+              {!p.active && (
+                <span className="badge badge-muted">Lakkautettu (viim. {p.last_year})</span>
+              )}
             </div>
             <div className="inst">
               {p.korkeakoulu}

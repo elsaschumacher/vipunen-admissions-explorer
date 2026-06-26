@@ -8,6 +8,10 @@ export interface Program {
   entry_cycle: string | null;
   cycle_code: string | null;
   degrees: string | null;
+  first_year: number | null;
+  last_year: number | null;
+  active: boolean;
+  opintopolku_oid: string | null;
   koulutusala: string | null;
   ohjauksen_ala: string | null;
   maakunta: string | null;

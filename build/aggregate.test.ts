@@ -11,6 +11,7 @@ function row(p: Partial<VipunenRow>): VipunenRow {
     hakutyyppi: "Varsinainen haku",
     valintatapajononTyyppi: null,
     tutkinnonAloitussykli: "I sykli",
+    kooditHakukohde: "1.2.246.562.20.111",
     koulutusasteTaso2: "Ylempi korkeakoulututkinto",
     koulutusalaTaso1: "ICT",
     okmOhjauksenAla: "Tietojenkäsittely ja tietoliikenne",
@@ -44,6 +45,9 @@ describe("helpers", () => {
     expect(majorName("Informaatioverkostot, tekniikan kandidaatti ja diplomi-insinööri", "x")).toBe("Informaatioverkostot");
     // admission side-channel prefix is dropped
     expect(majorName("Haku avoimen yliopiston väylän kautta, Tietotekniikka, tekniikan kandidaatti", "x")).toBe("Tietotekniikka");
+    // admission-round prefixes are dropped (would otherwise collapse to "Päähaku")
+    expect(majorName("Päähaku, lääketieteen koulutusohjelma (opetus suomeksi), lääketieteen lisensiaatti", "x")).toBe("lääketieteen koulutusohjelma");
+    expect(majorName("Huvudansökan, utbildningsprogrammet i medicin, medicine licentiat", "x")).toBe("utbildningsprogrammet i medicin");
     // semicolon umbrella → last part
     expect(majorName("Computer, Communication and Information Sciences; Computer Science, Master of Science (Technology)", "x")).toBe("Computer Science");
     // null falls back to the degree field
@@ -118,6 +122,22 @@ describe("aggregate — major-level grouping", () => {
     expect(programs).toHaveLength(1);
     expect(programs[0].degrees).toBe("Dipl.ins., Tekn. kand.");
     expect(programYears.map((y) => y.year).sort()).toEqual([2015, 2024]);
+  });
+
+  it("flags activity span, active=false for discontinued, and keeps latest OID", () => {
+    const { programs } = aggregate([
+      row({ koulutuksenAlkamisvuosi: 2016, kaikkiHakijatLkm: 100, kooditHakukohde: "oid-old" }),
+      row({ koulutuksenAlkamisvuosi: 2020, kaikkiHakijatLkm: 120, kooditHakukohde: "oid-new" }),
+    ]);
+    expect(programs[0].first_year).toBe(2016);
+    expect(programs[0].last_year).toBe(2020);
+    expect(programs[0].active).toBe(false); // last activity 2020 < 2025
+    expect(programs[0].opintopolku_oid).toBe("oid-new"); // latest year's OID
+  });
+
+  it("active=true when there is recent activity", () => {
+    const { programs } = aggregate([row({ koulutuksenAlkamisvuosi: 2026, kaikkiHakijatLkm: 50 })]);
+    expect(programs[0].active).toBe(true);
   });
 
   it("keeps master's entry (II sykli) separate from the bachelor major", () => {

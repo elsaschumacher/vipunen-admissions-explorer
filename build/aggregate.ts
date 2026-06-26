@@ -27,6 +27,7 @@ export interface VipunenRow {
   hakutyyppi: string | null;
   valintatapajononTyyppi: string | null;
   tutkinnonAloitussykli: string | null;
+  kooditHakukohde: string | null;
   koulutusasteTaso2: string | null;
   koulutusalaTaso1: string | null;
   okmOhjauksenAla: string | null;
@@ -57,6 +58,10 @@ export interface ProgramRow {
   entry_cycle: string; // friendly label: "Suora haku (kandi/perustutkinto)" / "Maisterihaku" / …
   cycle_code: string; // i | ii | iii | x
   degrees: string | null; // distinct main-degree labels seen, for info
+  first_year: number | null;
+  last_year: number | null;
+  active: boolean; // had applicants/places in ACTIVE_FROM or later (current Opintopolku round)
+  opintopolku_oid: string | null; // latest hakukohde OID, links to opintopolku.fi
   koulutusala: string | null;
   ohjauksen_ala: string | null;
   maakunta: string | null;
@@ -94,6 +99,10 @@ export interface Aggregated {
 
 const n = (v: number | null | undefined): number => (typeof v === "number" ? v : 0);
 
+// A program counts as "active" if it had applicants/places in this year or later
+// (i.e. it appears in the current Opintopolku application round).
+export const ACTIVE_FROM = 2025;
+
 function slug(s: string): string {
   return s
     .toLowerCase()
@@ -109,9 +118,20 @@ export function fieldOf(label: string): string {
   return (parts.length > 1 ? parts.slice(1).join(", ") : label).trim().toLowerCase();
 }
 
-// Admission side-channels that prefix a hakukohde (e.g. "Haku avoimen yliopiston
-// väylän kautta, Tietotekniikka, …"); we drop the prefix so the major is recovered.
-const CHANNEL_PREFIXES = ["haku ", "double degree", "siirtohaku", "avoimen väylä", "avoin väylä"];
+// Admission round / side-channel markers that prefix a hakukohde, e.g.
+// "Haku avoimen yliopiston väylän kautta, Tietotekniikka, …" or
+// "Päähaku, lääketieteen koulutusohjelma, …". Without stripping these the major
+// would wrongly become "Päähaku"/"Haku …", collapsing unrelated programs together.
+const CHANNEL_PREFIXES = [
+  "haku ",
+  "päähaku",
+  "huvudansökan",
+  "gemensam ansökan",
+  "double degree",
+  "siirtohaku",
+  "avoimen väylä",
+  "avoin väylä",
+];
 
 /**
  * Major / study option recovered from the hakukohde (application target), e.g.
@@ -195,6 +215,11 @@ export function aggregate(rows: VipunenRow[]): Aggregated {
   const degreeSets = new Map<string, Set<string>>();
   const years = new Map<string, ProgramYearRow>();
   const tracks = new Map<string, ProgramTrackRow>();
+  // per-program activity span + latest hakukohde OID (for the Opintopolku link)
+  const stats = new Map<
+    string,
+    { first: number; last: number; oid: string | null; oidYear: number; oidApp: number }
+  >();
 
   for (const r of rows) {
     if (!isUsableProgram(r)) continue;
@@ -217,6 +242,10 @@ export function aggregate(rows: VipunenRow[]): Aggregated {
         entry_cycle: cycleLabel(r.tutkinnonAloitussykli),
         cycle_code: cycleCode(r.tutkinnonAloitussykli),
         degrees: null,
+        first_year: null,
+        last_year: null,
+        active: false,
+        opintopolku_oid: null,
         koulutusala: r.koulutusalaTaso1,
         ohjauksen_ala: r.okmOhjauksenAla,
         maakunta: r.maakuntaHakukohde,
@@ -226,6 +255,21 @@ export function aggregate(rows: VipunenRow[]): Aggregated {
     }
     const deg = degreeOf(label);
     if (deg) degreeSets.get(pid)!.add(deg);
+
+    // activity span + latest OID (prefer the most recent year, then the largest hakukohde)
+    const hasActivity = n(r.kaikkiHakijatLkm) > 0 || n(r.aloituspaikatLkm) > 0;
+    if (hasActivity) {
+      const s = stats.get(pid) ?? { first: year, last: year, oid: null, oidYear: -1, oidApp: -1 };
+      s.first = Math.min(s.first, year);
+      s.last = Math.max(s.last, year);
+      const app = n(r.kaikkiHakijatLkm);
+      if (r.kooditHakukohde && (year > s.oidYear || (year === s.oidYear && app > s.oidApp))) {
+        s.oid = r.kooditHakukohde;
+        s.oidYear = year;
+        s.oidApp = app;
+      }
+      stats.set(pid, s);
+    }
 
     // program_year facts — SUM across all track rows
     const yk = `${pid}|${year}|${hakutapa}`;
@@ -274,9 +318,16 @@ export function aggregate(rows: VipunenRow[]): Aggregated {
     }
   }
 
-  // fold collected degree labels into each program
+  // fold collected degree labels + activity stats into each program
   for (const [pid, set] of degreeSets) {
     programs.get(pid)!.degrees = [...set].sort().join(", ") || null;
+  }
+  for (const [pid, s] of stats) {
+    const p = programs.get(pid)!;
+    p.first_year = s.first;
+    p.last_year = s.last;
+    p.active = s.last >= ACTIVE_FROM;
+    p.opintopolku_oid = s.oid;
   }
 
   return {
