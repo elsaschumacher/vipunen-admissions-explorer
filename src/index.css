@@ -58,6 +58,15 @@ h2 { font-size: 1.1rem; margin: 28px 0 12px; color: var(--muted); font-weight: 6
 .result:hover { background: var(--panel-2); text-decoration: none; }
 .result .inst { color: var(--muted); font-size: 0.85rem; }
 
+.uni-group { margin-bottom: 18px; }
+.uni-header {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin: 14px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
 .badge {
   display: inline-block;
   margin-left: 8px;
