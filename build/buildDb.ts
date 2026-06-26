@@ -73,23 +73,37 @@ function rawRowFor(r: VipunenRow) {
   };
 }
 
-async function konfoJson(path: string): Promise<Record<string, unknown> | null> {
+type KonfoResult =
+  | { status: "ok"; data: Record<string, unknown> }
+  | { status: "notfound" } // genuine 404 — safe to cache as "no koulutus"
+  | { status: "error" }; // transient (429/5xx/network) — do NOT cache, retry next run
+
+async function konfoJson(path: string): Promise<KonfoResult> {
   try {
     const res = await fetch(`${KONFO}${path}`, { headers: { "User-Agent": "vipunen-explorer" } });
-    if (!res.ok) return null;
-    return (await res.json()) as Record<string, unknown>;
+    if (res.status === 404) return { status: "notfound" };
+    if (!res.ok) return { status: "error" };
+    return { status: "ok", data: (await res.json()) as Record<string, unknown> };
   } catch {
-    return null;
+    return { status: "error" };
   }
 }
 
-/** Resolve a hakukohde OID to its koulutus OID (hakukohde → toteutus → koulutus). */
-async function resolveKoulutusOid(hakukohdeOid: string): Promise<string | null> {
+/**
+ * Resolve a hakukohde OID to its koulutus OID (hakukohde → toteutus → koulutus).
+ * Returns the OID, null if genuinely absent, or undefined on a transient failure
+ * (so the caller can skip caching and retry on a later build).
+ */
+async function resolveKoulutusOid(hakukohdeOid: string): Promise<string | null | undefined> {
   const hk = await konfoJson(`/hakukohde/${hakukohdeOid}`);
-  const toteutusOid = hk?.toteutusOid as string | undefined;
-  if (!toteutusOid) return (hk?.koulutusOid as string) ?? null;
+  if (hk.status === "error") return undefined;
+  if (hk.status === "notfound") return null;
+  const toteutusOid = hk.data.toteutusOid as string | undefined;
+  if (!toteutusOid) return (hk.data.koulutusOid as string) ?? null;
   const tot = await konfoJson(`/toteutus/${toteutusOid}`);
-  return (tot?.koulutusOid as string) ?? null;
+  if (tot.status === "error") return undefined;
+  if (tot.status === "notfound") return null;
+  return (tot.data.koulutusOid as string) ?? null;
 }
 
 /** Fill opintopolku_koulutus_oid for active programs, using a local cache. */
@@ -101,12 +115,13 @@ async function enrichKoulutusOids(programs: Awaited<ReturnType<typeof aggregate>
     (p) => p.active && p.opintopolku_oid && !(p.opintopolku_oid in cache),
   );
   console.log(`Resolving koulutus OIDs for ${todo.length} active programs (cached: ${Object.keys(cache).length})…`);
-  const CONCURRENCY = 8;
+  const CONCURRENCY = 5;
   for (let i = 0; i < todo.length; i += CONCURRENCY) {
     const batch = todo.slice(i, i + CONCURRENCY);
     await Promise.all(
       batch.map(async (p) => {
-        cache[p.opintopolku_oid!] = await resolveKoulutusOid(p.opintopolku_oid!);
+        const r = await resolveKoulutusOid(p.opintopolku_oid!);
+        if (r !== undefined) cache[p.opintopolku_oid!] = r; // skip transient failures
       }),
     );
     process.stdout.write(`\r  resolved ${Math.min(i + CONCURRENCY, todo.length)}/${todo.length}`);
