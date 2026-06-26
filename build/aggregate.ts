@@ -141,14 +141,19 @@ const CHANNEL_PREFIXES = [
  */
 export function majorName(hakukohde: string | null, fallbackLabel: string): string {
   if (!hakukohde) return fieldOf(fallbackLabel);
-  let s = hakukohde.replace(/\s*\([^)]*\)/g, ""); // drop parentheticals
+  let s = hakukohde;
   const low = s.toLowerCase();
   if (CHANNEL_PREFIXES.some((p) => low.startsWith(p)) && s.includes(",")) {
     s = s.slice(s.indexOf(",") + 1); // drop leading admission-channel segment
   }
   if (s.includes(";")) s = s.slice(s.lastIndexOf(";") + 1); // umbrella name → last part
-  s = s.split(",")[0]; // drop the degree-type suffix
-  return s.trim() || fieldOf(fallbackLabel);
+  const segs = s.split(",").map((x) => x.trim());
+  // AMK hakukohde are "<degree> (AMK), <field>" (degree-type first) → take the field;
+  // university hakukohde are "<field>, <degree>" (field first) → take the first segment.
+  const isAmkDegreeFirst = /\((ylempi\s+)?(amk|yamk)\)/i.test(segs[0]) && segs.length > 1;
+  let field = isAmkDegreeFirst ? segs[1] : segs[0];
+  field = field.replace(/\s*\([^)]*\)/g, "").trim(); // drop parentheticals
+  return field || fieldOf(fallbackLabel);
 }
 
 /** The degree-type prefix, e.g. "Dipl.ins." from "Dipl.ins., tuotantotalous". */
@@ -194,9 +199,18 @@ function titleCase(field: string): string {
   return field.charAt(0).toUpperCase() + field.slice(1);
 }
 
-/** A program row must identify both an institution and a main degree. */
+/**
+ * A program row must identify an institution and a real degree. Excludes
+ * non-degree offerings (open university, FITech, täydennyskoulutus, etc.),
+ * which Vipunen marks with "Tieto puuttuu" / "Tutkintoon johtamaton koulutus".
+ */
 export function isUsableProgram(r: VipunenRow): boolean {
-  return Boolean(r.korkeakoulu) && Boolean(r.paaasiallinenTutkintoHakukohde);
+  return (
+    Boolean(r.korkeakoulu) &&
+    Boolean(r.paaasiallinenTutkintoHakukohde) &&
+    r.paaasiallinenTutkintoHakukohde !== "Tieto puuttuu" &&
+    r.tutkinnonAloitussykli !== "Tutkintoon johtamaton koulutus"
+  );
 }
 
 function minOf(a: number | null, b: number | null): number | null {

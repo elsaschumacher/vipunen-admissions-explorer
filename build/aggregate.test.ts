@@ -50,6 +50,9 @@ describe("helpers", () => {
     expect(majorName("Huvudansökan, utbildningsprogrammet i medicin, medicine licentiat", "x")).toBe("utbildningsprogrammet i medicin");
     // semicolon umbrella → last part
     expect(majorName("Computer, Communication and Information Sciences; Computer Science, Master of Science (Technology)", "x")).toBe("Computer Science");
+    // AMK "<degree> (AMK), <field>" → take the field, not the degree type
+    expect(majorName("Insinööri (AMK), konetekniikka, materiaali- ja pintakäsittelytekniikka", "x")).toBe("konetekniikka");
+    expect(majorName("Tradenomi (ylempi AMK), liiketalous", "x")).toBe("liiketalous");
     // null falls back to the degree field
     expect(majorName(null, "Dipl.ins., tuotantotalous")).toBe("tuotantotalous");
   });
@@ -99,6 +102,14 @@ describe("aggregate — metric summing", () => {
 
   it("skips rows missing institution or main degree", () => {
     const { programs } = aggregate([row({ korkeakoulu: null }), row({ paaasiallinenTutkintoHakukohde: null })]);
+    expect(programs).toHaveLength(0);
+  });
+
+  it("excludes non-degree offerings (open university / non-degree)", () => {
+    const { programs } = aggregate([
+      row({ hakukohde: "Ohjelmointi 1", paaasiallinenTutkintoHakukohde: "Tieto puuttuu", tutkinnonAloitussykli: "Tutkintoon johtamaton koulutus", kaikkiHakijatLkm: 78 }),
+      row({ hakukohde: "Avoin yo, ohjelmointi", paaasiallinenTutkintoHakukohde: "Dipl.ins., tietotekniikka", tutkinnonAloitussykli: "Tutkintoon johtamaton koulutus" }),
+    ]);
     expect(programs).toHaveLength(0);
   });
 });

@@ -7,7 +7,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { aggregate, programId, majorName, type VipunenRow } from "./aggregate.ts";
+import { aggregate, programId, majorName, isUsableProgram, type VipunenRow } from "./aggregate.ts";
 
 config();
 
@@ -42,9 +42,9 @@ async function fetchAll(): Promise<VipunenRow[]> {
 }
 
 function rawRowFor(r: VipunenRow) {
-  if (!r.korkeakoulu || !r.paaasiallinenTutkintoHakukohde) return null;
+  if (!isUsableProgram(r)) return null;
   return {
-    program_id: programId(r.korkeakoulu, r.tutkinnonAloitussykli, majorName(r.hakukohde, r.paaasiallinenTutkintoHakukohde)),
+    program_id: programId(r.korkeakoulu!, r.tutkinnonAloitussykli, majorName(r.hakukohde, r.paaasiallinenTutkintoHakukohde!)),
     year: r.koulutuksenAlkamisvuosi,
     kausi: r.koulutuksenAlkamiskausi,
     hakukohde: r.hakukohde,
