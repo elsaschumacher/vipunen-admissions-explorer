@@ -3,11 +3,13 @@ import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import Search from "./pages/Search.tsx";
 import ProgramDetail from "./pages/ProgramDetail.tsx";
+import ScoreChecker from "./pages/ScoreChecker.tsx";
 import "./index.css";
 
 const router = createBrowserRouter([
   { path: "/", element: <Search /> },
   { path: "/program/:id", element: <ProgramDetail /> },
+  { path: "/mihin-paasisit", element: <ScoreChecker /> },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

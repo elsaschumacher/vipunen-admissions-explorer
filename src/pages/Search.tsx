@@ -116,7 +116,8 @@ export default function Search() {
       <h1>Korkeakouluun hyväksytyt</h1>
       <p className="muted">
         Hae koulutusta (esim. "tietotekniikka") ja katso hakija- ja
-        valintatilastot vuosittain.
+        valintatilastot vuosittain. ·{" "}
+        <Link to="/mihin-paasisit">Mihin pääsisit pisteilläsi? →</Link>
       </p>
 
       <input
