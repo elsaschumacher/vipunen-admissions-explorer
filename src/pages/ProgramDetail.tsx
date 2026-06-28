@@ -12,6 +12,7 @@ export default function ProgramDetail() {
   const [years, setYears] = useState<ProgramYear[]>([]);
   const [tracks, setTracks] = useState<ProgramTrack[]>([]);
   const [hakutapa, setHakutapa] = useState("Yhteishaku");
+  const [year, setYear] = useState<number | null>(null);
   const [basis, setBasis] = useState<"all" | "first">("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,22 +56,38 @@ export default function ProgramDetail() {
   }, [hakutavat, hakutapa]);
 
   const yearsForTapa = useMemo(
-    () => years.filter((y) => y.hakutapa === hakutapa),
+    () =>
+      years
+        .filter((y) => y.hakutapa === hakutapa)
+        .sort((a, b) => b.year - a.year),
     [years, hakutapa],
   );
-  const latest = useMemo(
-    () => yearsForTapa.reduce<ProgramYear | null>((a, b) => (!a || b.year > a.year ? b : a), null),
-    [yearsForTapa],
+  // Default to the latest *complete* round (someone has accepted a place); the
+  // current round is usually still in progress (accepted = 0, partial tracks).
+  const defaultYear = useMemo(() => {
+    const complete = yearsForTapa.find((y) => y.accepted > 0);
+    return (complete ?? yearsForTapa[0])?.year ?? null;
+  }, [yearsForTapa]);
+
+  // Keep the selected year valid for the current hakutapa.
+  useEffect(() => {
+    if (defaultYear != null && !yearsForTapa.some((y) => y.year === year)) setYear(defaultYear);
+  }, [defaultYear, yearsForTapa, year]);
+
+  const selected = useMemo(
+    () => yearsForTapa.find((y) => y.year === year) ?? null,
+    [yearsForTapa, year],
   );
-  const latestTracks = useMemo(
+  const selectedTracks = useMemo(
     () =>
-      latest
+      selected
         ? tracks
-            .filter((t) => t.hakutapa === hakutapa && t.year === latest.year)
+            .filter((t) => t.hakutapa === hakutapa && t.year === selected.year)
             .sort((a, b) => b.selected - a.selected)
         : [],
-    [tracks, hakutapa, latest],
+    [tracks, hakutapa, selected],
   );
+  const inProgress = selected != null && selected.accepted === 0 && selected.selected >= 0 && year === yearsForTapa[0]?.year;
 
   if (loading) return <div className="container"><p className="muted">Ladataan…</p></div>;
   if (error) return <div className="container"><p style={{ color: "salmon" }}>Virhe: {error}</p></div>;
@@ -148,16 +165,32 @@ export default function ProgramDetail() {
         </button>
       </div>
 
-      {latest ? (
+      {selected ? (
         <>
-          <h2>Tilastot {latest.year}</h2>
-          <StatCards py={latest} basis={basis} />
+          <div className="year-row">
+            <h2 style={{ margin: 0 }}>Tilastot</h2>
+            <select value={year ?? ""} onChange={(e) => setYear(Number(e.target.value))}>
+              {yearsForTapa.map((y) => (
+                <option key={y.year} value={y.year}>
+                  {y.year}
+                  {y.accepted === 0 ? " (kesken)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          {inProgress && (
+            <p className="muted small">
+              Vuoden {selected.year} valinta on vielä kesken — paikan
+              vastaanottaneet ja lopulliset luvut puuttuvat.
+            </p>
+          )}
+          <StatCards py={selected} basis={basis} />
 
           <h2>Kehitys vuosittain</h2>
           <TrendCharts years={yearsForTapa} basis={basis} />
 
-          <h2>Valintatavat {latest.year}</h2>
-          <TrackTable tracks={latestTracks} />
+          <h2>Valintatavat {selected.year}</h2>
+          <TrackTable tracks={selectedTracks} />
         </>
       ) : (
         <p className="muted">Ei tilastoja valitulle hakutavalle.</p>
