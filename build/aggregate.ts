@@ -139,11 +139,17 @@ const ROUTE_PREFIXES = [
   "maisterihaku",
   "tohtorihaku",
   "kandidaattihaku",
+  "lisähaku",
+  "magisterantagning",
   "avoimen yliopiston väylä",
   "avoimen ammattikorkeakoulun väylä",
   "avoimen amk",
   "avoimen väylä",
   "avoin väylä",
+  "öppna universitetsleden",
+  "öppna yrkeshögskoleleden",
+  "öppna yh",
+  "öppna leden",
 ];
 
 /**
@@ -266,7 +272,7 @@ export function aggregate(rows: VipunenRow[]): Aggregated {
         program_id: pid,
         korkeakoulu,
         sektori: r.sektori,
-        program: major,
+        program: titleCase(major),
         field: major.toLowerCase(),
         degree_group: titleCase(fieldOf(label)),
         entry_cycle: cycleLabel(r.tutkinnonAloitussykli),
