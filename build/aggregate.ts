@@ -121,17 +121,27 @@ export function fieldOf(label: string): string {
   return (parts.length > 1 ? parts.slice(1).join(", ") : label).trim().toLowerCase();
 }
 
-// Admission round / side-channel markers that prefix a hakukohde, e.g.
-// "Haku avoimen yliopiston väylän kautta, Tietotekniikka, …" or
-// "Päähaku, lääketieteen koulutusohjelma, …". Without stripping these the major
-// would wrongly become "Päähaku"/"Haku …", collapsing unrelated programs together.
-const CHANNEL_PREFIXES = [
+// Admission round / route markers that prefix a hakukohde, e.g.
+// "Haku avoimen yliopiston väylän kautta, Tietotekniikka, …", "Päähaku, …",
+// "Avoimen yliopiston väylä, Tietotekniikka, …", "Maisterihaku: Sävellys".
+// Without stripping these the major would wrongly become the route name
+// ("Päähaku", "Avoimen yliopiston väylä", …), collapsing unrelated programs.
+const ROUTE_PREFIXES = [
   "haku ",
   "päähaku",
   "huvudansökan",
   "gemensam ansökan",
   "double degree",
   "siirtohaku",
+  "transfer application",
+  "separate application",
+  "master's admission",
+  "maisterihaku",
+  "tohtorihaku",
+  "kandidaattihaku",
+  "avoimen yliopiston väylä",
+  "avoimen ammattikorkeakoulun väylä",
+  "avoimen amk",
   "avoimen väylä",
   "avoin väylä",
 ];
@@ -145,8 +155,11 @@ export function majorName(hakukohde: string | null, fallbackLabel: string): stri
   if (!hakukohde) return fieldOf(fallbackLabel);
   let s = hakukohde;
   const low = s.toLowerCase();
-  if (CHANNEL_PREFIXES.some((p) => low.startsWith(p)) && s.includes(",")) {
-    s = s.slice(s.indexOf(",") + 1); // drop leading admission-channel segment
+  if (ROUTE_PREFIXES.some((p) => low.startsWith(p))) {
+    // drop the leading route segment, up to the first comma or colon
+    const seps = [s.indexOf(","), s.indexOf(":")].filter((i) => i > 0);
+    if (seps.length === 0) return fieldOf(fallbackLabel); // route name only → use degree field
+    s = s.slice(Math.min(...seps) + 1);
   }
   if (s.includes(";")) s = s.slice(s.lastIndexOf(";") + 1); // umbrella name → last part
   const segs = s.split(",").map((x) => x.trim());

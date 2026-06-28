@@ -12,7 +12,8 @@ interface Facets {
 export default function Search() {
   const [query, setQuery] = useState("");
   const [sektori, setSektori] = useState("");
-  const [cycle, setCycle] = useState("");
+  // Default to bachelor / direct admission (kandiohjelmat) — most applicants start here.
+  const [cycle, setCycle] = useState("i");
   const [korkeakoulu, setKorkeakoulu] = useState("");
   const [koulutusala, setKoulutusala] = useState("");
   const [maakunta, setMaakunta] = useState("");

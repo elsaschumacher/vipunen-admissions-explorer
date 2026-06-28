@@ -48,6 +48,10 @@ describe("helpers", () => {
     // admission-round prefixes are dropped (would otherwise collapse to "Päähaku")
     expect(majorName("Päähaku, lääketieteen koulutusohjelma (opetus suomeksi), lääketieteen lisensiaatti", "x")).toBe("lääketieteen koulutusohjelma");
     expect(majorName("Huvudansökan, utbildningsprogrammet i medicin, medicine licentiat", "x")).toBe("utbildningsprogrammet i medicin");
+    // route prefixes leak in as fake programs unless stripped → recover the real field
+    expect(majorName("Avoimen yliopiston väylä, Tietotekniikka, tekniikan kandidaatti ja diplomi-insinööri", "x")).toBe("Tietotekniikka");
+    expect(majorName("Maisterihaku: Sävellys", "x")).toBe("Sävellys");
+    expect(majorName("Maisterihaku, Kuvataidekasvatus, taiteen maisteri", "x")).toBe("Kuvataidekasvatus");
     // semicolon umbrella → last part
     expect(majorName("Computer, Communication and Information Sciences; Computer Science, Master of Science (Technology)", "x")).toBe("Computer Science");
     // AMK "<degree> (AMK), <field>" → take the field, not the degree type
