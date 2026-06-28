@@ -41,17 +41,6 @@ export default function StatCards({
         rawValue={ratio(applicants, py.places)}
         sub={basis === "first" ? "ensisijaiset / paikka" : "hakijat / paikka"}
       />
-      {py.min_score != null && (
-        <Card
-          label="Hyväksytyt pisteet"
-          rawValue={
-            py.max_score != null && py.max_score !== py.min_score
-              ? `${py.min_score}–${py.max_score}`
-              : `${py.min_score}`
-          }
-          sub="alin–ylin hyväksytty"
-        />
-      )}
     </div>
   );
 }
