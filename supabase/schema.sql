@@ -60,6 +60,17 @@ create table program_track (
   primary key (program_id, year, hakutapa, track)
 );
 
+-- ── Admission point limits per selection track (pisterajat), from the Vipunen
+--    "Korkeakoulujen yhteishaku - pisterajat" Excel (imported separately) ──────
+create table program_admission_score (
+  program_id text not null references program(program_id) on delete cascade,
+  year       int  not null,
+  jono       text not null,                       -- valintatapajono (selection track)
+  min_score  numeric,                             -- alin hyväksytty pistemäärä
+  max_score  numeric,                             -- ylin hyväksytty pistemäärä
+  primary key (program_id, year, jono)
+);
+
 -- ── Raw source rows kept verbatim for transparency / future re-aggregation ─────
 create table raw_rows (
   id          bigint generated always as identity primary key,
@@ -97,16 +108,19 @@ create index program_korkeakoulu on program (korkeakoulu);
 create index program_active on program (active);
 create index program_search on program using gin (to_tsvector('simple', search_text));
 create index raw_rows_pid on raw_rows (program_id, year);
+create index program_admission_score_pid on program_admission_score (program_id, year);
 
 -- ── Row Level Security: browser (anon) may read, never write ───────────────────
-alter table program       enable row level security;
-alter table program_year  enable row level security;
-alter table program_track enable row level security;
-alter table raw_rows      enable row level security;
+alter table program        enable row level security;
+alter table program_year   enable row level security;
+alter table program_track  enable row level security;
+alter table raw_rows       enable row level security;
+alter table program_admission_score enable row level security;
 
 create policy "anon read program"       on program       for select to anon using (true);
 create policy "anon read program_year"  on program_year  for select to anon using (true);
 create policy "anon read program_track" on program_track for select to anon using (true);
 create policy "anon read raw_rows"      on raw_rows      for select to anon using (true);
+create policy "anon read program_admission_score" on program_admission_score for select to anon using (true);
 -- No insert/update/delete policies → writes are denied for anon. The build
 -- script uses the service-role key, which bypasses RLS.

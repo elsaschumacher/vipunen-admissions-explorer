@@ -47,6 +47,20 @@ Vipunen updates; delete `.vipunen-cache.json` first to force a fresh download.
 npm run dev
 ```
 
+## Admission point limits (pisterajat)
+
+Per-selection-method admission scores aren't in the Vipunen REST API or
+Opintopolku, only in the Vipunen Excel report *"Korkeakoulujen yhteishaku –
+pisterajat"*. To refresh them:
+
+1. Open that report on vipunen.fi, **expand the valintatapajono rows** (so each
+   programme shows its Koevalintajono / Todistusvalintajono sub-rows), and export.
+2. Save it as `data/pisterajat-<year>.xlsb`.
+3. `pip install pyxlsb` then `npm run import:scores -- <year>` (defaults to 2025).
+
+This matches each hakukohde to a program (same normalisation as the build) and
+loads `program_admission_score`.
+
 ## How the data is aggregated
 
 Each application target (`hakukohde`) is split in the source into multiple rows by

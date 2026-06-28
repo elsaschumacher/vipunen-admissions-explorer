@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "build:db": "tsx build/buildDb.ts",
+    "import:scores": "python3 build/import_scores.py",
     "test": "vitest run"
   },
   "dependencies": {

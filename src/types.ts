@@ -33,6 +33,14 @@ export interface ProgramYear {
   max_score: number | null;
 }
 
+export interface AdmissionScore {
+  program_id: string;
+  year: number;
+  jono: string;
+  min_score: number | null;
+  max_score: number | null;
+}
+
 export interface ProgramTrack {
   program_id: string;
   year: number;

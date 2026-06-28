@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase.ts";
-import type { Program, ProgramTrack, ProgramYear } from "../types.ts";
+import type { AdmissionScore, Program, ProgramTrack, ProgramYear } from "../types.ts";
 import StatCards from "../components/StatCards.tsx";
 import TrendCharts from "../components/TrendCharts.tsx";
 import TrackTable from "../components/TrackTable.tsx";
+import ScoreTable from "../components/ScoreTable.tsx";
 
 export default function ProgramDetail() {
   const { id } = useParams<{ id: string }>();
   const [program, setProgram] = useState<Program | null>(null);
   const [years, setYears] = useState<ProgramYear[]>([]);
   const [tracks, setTracks] = useState<ProgramTrack[]>([]);
+  const [scores, setScores] = useState<AdmissionScore[]>([]);
   const [hakutapa, setHakutapa] = useState("Yhteishaku");
   const [year, setYear] = useState<number | null>(null);
   const [basis, setBasis] = useState<"all" | "first">("all");
@@ -23,18 +25,20 @@ export default function ProgramDetail() {
     async function run() {
       setLoading(true);
       setError(null);
-      const [p, py, pt] = await Promise.all([
+      const [p, py, pt, sc] = await Promise.all([
         supabase.from("program").select("*").eq("program_id", id).single(),
         supabase.from("program_year").select("*").eq("program_id", id),
         supabase.from("program_track").select("*").eq("program_id", id),
+        supabase.from("program_admission_score").select("*").eq("program_id", id),
       ]);
       if (cancelled) return;
-      const err = p.error || py.error || pt.error;
+      const err = p.error || py.error || pt.error || sc.error;
       if (err) setError(err.message);
       else {
         setProgram(p.data as Program);
         setYears((py.data as ProgramYear[]) ?? []);
         setTracks((pt.data as ProgramTrack[]) ?? []);
+        setScores((sc.data as AdmissionScore[]) ?? []);
       }
       setLoading(false);
     }
@@ -191,6 +195,8 @@ export default function ProgramDetail() {
 
           <h2>Valintatavat {selected.year}</h2>
           <TrackTable tracks={selectedTracks} />
+
+          <ScoreTable scores={scores} />
         </>
       ) : (
         <p className="muted">Ei tilastoja valitulle hakutavalle.</p>
