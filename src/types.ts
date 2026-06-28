@@ -29,6 +29,8 @@ export interface ProgramYear {
   selected: number;
   accepted: number;
   started: number;
+  min_score: number | null;
+  max_score: number | null;
 }
 
 export interface ProgramTrack {

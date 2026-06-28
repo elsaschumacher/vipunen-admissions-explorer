@@ -92,12 +92,13 @@ describe("aggregate — metric summing", () => {
     expect(py.accepted).toBe(80);
   });
 
-  it("keeps scores per-track (min/max), never summed", () => {
-    const { programTracks } = aggregate(rows);
-    expect(programTracks).toHaveLength(1);
-    const t = programTracks[0];
-    expect(t.min_score).toBe(18);
-    expect(t.max_score).toBe(30);
+  it("captures admission score range at the program-year level (min/max, not summed)", () => {
+    const { programYears } = aggregate([
+      row({ valintatapajononTyyppi: "Ei valittu", kaikkiHakijatLkm: 100, alinHyvaksyttyPistemaara: 14, ylinHyvaksyttyPistemaara: 40 }),
+      row({ valintatapajononTyyppi: "Ei valittu", kaikkiHakijatLkm: 50, alinHyvaksyttyPistemaara: 11, ylinHyvaksyttyPistemaara: 38 }),
+    ]);
+    expect(programYears[0].min_score).toBe(11);
+    expect(programYears[0].max_score).toBe(40);
   });
 
   it("skips rows missing institution or main degree", () => {

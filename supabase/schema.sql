@@ -42,6 +42,8 @@ create table program_year (
   selected   int,                               -- SUM(valitutLkm)
   accepted   int,                               -- SUM(paikanVastaanottaneetLkm)
   started    int,                               -- SUM(aloittaneetLkm)
+  min_score  numeric,                           -- lowest admitted score (where reported)
+  max_score  numeric,                           -- highest admitted score
   primary key (program_id, year, hakutapa)
 );
 

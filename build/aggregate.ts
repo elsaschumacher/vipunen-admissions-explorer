@@ -79,6 +79,8 @@ export interface ProgramYearRow {
   selected: number;
   accepted: number;
   started: number;
+  min_score: number | null; // lowest admitted score (alinHyvaksyttyPistemaara), where reported
+  max_score: number | null; // highest admitted score (ylinHyvaksyttyPistemaara)
 }
 
 export interface ProgramTrackRow {
@@ -301,6 +303,8 @@ export function aggregate(rows: VipunenRow[]): Aggregated {
         selected: 0,
         accepted: 0,
         started: 0,
+        min_score: null as number | null,
+        max_score: null as number | null,
       };
     py.places += n(r.aloituspaikatLkm);
     py.applicants += n(r.kaikkiHakijatLkm);
@@ -308,6 +312,9 @@ export function aggregate(rows: VipunenRow[]): Aggregated {
     py.selected += n(r.valitutLkm);
     py.accepted += n(r.paikanVastaanottaneetLkm);
     py.started += n(r.aloittaneetLkm);
+    // admission cutoff range — reported on the overall ("Ei valittu") rows, not per track
+    py.min_score = minOf(py.min_score, r.alinHyvaksyttyPistemaara);
+    py.max_score = maxOf(py.max_score, r.ylinHyvaksyttyPistemaara);
     years.set(yk, py);
 
     // program_track detail — only rows that represent an actual selection track
